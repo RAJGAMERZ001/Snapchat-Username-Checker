@@ -3,10 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 
 	//"encoding/hex" // enable for debugging
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -97,11 +100,63 @@ func isProxyValid(proxyAddr string) bool {
 
 
     go func() {
+		// Parse proxy URL for authentication
+		var auth *proxy.Auth
+		var proxyHost string
+		
+		// Check if the proxy format includes authentication credentials
+		if strings.Count(proxyAddr, ":") > 1 {
+			// Format is likely username:password@host:port or similar
+			parts := strings.Split(proxyAddr, ":")
+			
+			// Handle different formats with multiple colons
+			if len(parts) == 4 {
+				// Format: username:session_or_password:host:port
+				username := parts[0]
+				password := parts[1]
+				host := parts[2]
+				port := parts[3]
+				
+				auth = &proxy.Auth{
+					User:     username,
+					Password: password,
+				}
+				proxyHost = host + ":" + port
+			} else if len(parts) > 4 {
+				// More complex format, extract what we can
+				username := parts[0]
+				// Combine other parts as the password except the last two (host:port)
+				password := strings.Join(parts[1:len(parts)-2], ":")
+				host := parts[len(parts)-2]
+				port := parts[len(parts)-1]
+				
+				auth = &proxy.Auth{
+					User:     username,
+					Password: password,
+				}
+				proxyHost = host + ":" + port
+			} else {
+				// Unknown format, try using it as is
+				auth = nil
+				proxyHost = proxyAddr
+			}
+		} else {
+			// Standard host:port format
+			auth = nil
+			proxyHost = proxyAddr
+		}
 
 		// this could instead request the endpoint we use, but this is decent enough
 		// the only issue is it doesnt check if the HTTP2 connection will go through, some SOCKS5 dont allow HTTP2 to pass-through for some reason
-
-        dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, netDialer)
+        var dialer proxy.Dialer
+        var err error
+        
+        if auth != nil {
+            dialer, err = proxy.SOCKS5("tcp", proxyHost, auth, netDialer)
+        } else {
+            dialer, err = proxy.SOCKS5("tcp", proxyHost, nil, netDialer)
+        }
+        
         if err != nil {
             result <- false
             return
@@ -156,8 +211,8 @@ func proxyPrompt() int {
     fmt.Println(Cyan + "\n-> Choose an option:" + Reset)
     fmt.Println(Cyan+"1."+Reset+" Proceed without proxies\n")
     fmt.Println(Cyan+"2."+Reset+" Use SOCKS5 proxies") 
-	fmt.Println(Red+"WARNING: "+Reset+"Your proxies NEED to be SOCKS5 and the must be in a IP:PORT format WITHOUT having 'socks5://' behind them.")
-	fmt.Println(Red+"WARNING: "+Reset+"If your proxies are slow RUN PROXYLESS.This tool was NOT designed with slow proxies in mind.")
+	fmt.Println(Yellow+"INFO: "+Reset+"Your proxies NEED to be SOCKS5 in either IP:PORT format or username:password:host:port format.")
+	fmt.Println(Red+"WARNING: "+Reset+"If your proxies are slow RUN PROXYLESS. This tool was NOT designed with slow proxies in mind.")
     fmt.Println(Red+"WARNING: "+Reset+"It is faster to run without proxies than with slow proxies.")
 
     for {
@@ -286,7 +341,63 @@ func proxiedSpoofRequest(config RequestConfig) ([]string, uint32, error)  {
 	// }
 
 	proxyURL := proxies[currentProxyIndex] // this gets the current proxy that we should use in case of a ratelimit or invalid proxy this gets cycled
-	dialer, err := proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
+	
+	// Parse proxy URL for authentication
+	var auth *proxy.Auth
+	var proxyHost string
+	
+	// Check if the proxy format includes authentication credentials
+	if strings.Count(proxyURL, ":") > 1 {
+		// Format is likely username:password@host:port or similar
+		parts := strings.Split(proxyURL, ":")
+		
+		// Handle different formats with multiple colons
+		if len(parts) == 4 {
+			// Format: username:session_or_password:host:port
+			username := parts[0]
+			password := parts[1]
+			host := parts[2]
+			port := parts[3]
+			
+			auth = &proxy.Auth{
+				User:     username,
+				Password: password,
+			}
+			proxyHost = host + ":" + port
+		} else if len(parts) > 4 {
+			// More complex format, extract what we can
+			username := parts[0]
+			// Combine other parts as the password except the last two (host:port)
+			password := strings.Join(parts[1:len(parts)-2], ":")
+			host := parts[len(parts)-2]
+			port := parts[len(parts)-1]
+			
+			auth = &proxy.Auth{
+				User:     username,
+				Password: password,
+			}
+			proxyHost = host + ":" + port
+		} else {
+			// Unknown format, try using it as is
+			auth = nil
+			proxyHost = proxyURL
+		}
+	} else {
+		// Standard host:port format
+		auth = nil
+		proxyHost = proxyURL
+	}
+	
+	// Create the dialer with authentication if needed
+	var dialer proxy.Dialer
+	var err error
+	
+	if auth != nil {
+		dialer, err = proxy.SOCKS5("tcp", proxyHost, auth, proxy.Direct)
+	} else {
+		dialer, err = proxy.SOCKS5("tcp", proxyHost, nil, proxy.Direct)
+	}
+	
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating SOCKS5 dialer: %v", err)
 	}
@@ -585,6 +696,130 @@ This checker has proxy support and is the fastest snapchat checker avaliable! It
 
 // this ui is ugly asf i should probably restructure it 
 
+// Function to generate random Snapchat usernames
+// Snapchat username requirements:
+// - Usernames must be between 3-15 characters
+// - Can contain letters, numbers, and underscores
+// - Cannot start with a number
+// - No spaces or special characters other than underscores
+func generateSnapchatUsernames(count int, minLength, maxLength int) []string {
+	if minLength < 3 {
+		minLength = 3 // Minimum username length for Snapchat
+	}
+	if maxLength > 15 {
+		maxLength = 15 // Maximum username length for Snapchat
+	}
+	
+	letters := "abcdefghijklmnopqrstuvwxyz"
+	numbers := "0123456789"
+	allowedChars := letters + numbers + "_"
+	
+	usernames := make([]string, 0, count)
+	usernameMap := make(map[string]bool) // To avoid duplicates
+	
+	for len(usernames) < count {
+		// Determine length for this username
+		length, _ := rand.Int(rand.Reader, big.NewInt(int64(maxLength-minLength+1)))
+		usernameLength := int(length.Int64()) + minLength
+		
+		// Start with a letter to follow Snapchat's rules
+		letterIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		username := string(letters[letterIndex.Int64()])
+		
+		// Add remaining characters
+		for i := 1; i < usernameLength; i++ {
+			// Generate a random number to decide which character set to use
+			charSetChoice, _ := rand.Int(rand.Reader, big.NewInt(100))
+			
+			var nextChar string
+			if charSetChoice.Int64() < 75 { // 75% chance for letters and numbers
+				if charSetChoice.Int64() < 50 { // 50% chance for letters
+					charIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+					nextChar = string(letters[charIndex.Int64()])
+				} else { // 25% chance for numbers
+					charIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(numbers))))
+					nextChar = string(numbers[charIndex.Int64()])
+				}
+			} else { // 25% chance for underscores, or a mix of allowed chars
+				charIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(allowedChars))))
+				nextChar = string(allowedChars[charIndex.Int64()])
+			}
+			
+			username += nextChar
+		}
+		
+		// Add username if it's unique
+		if !usernameMap[username] {
+			usernameMap[username] = true
+			usernames = append(usernames, username)
+		}
+	}
+	
+	return usernames
+}
+
+// Function to save generated usernames to a file
+func saveGeneratedUsernames(usernames []string, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	writer := bufio.NewWriter(file)
+	for _, username := range usernames {
+		_, err := writer.WriteString(username + "\n")
+		if err != nil {
+			return err
+		}
+	}
+	
+	return writer.Flush()
+}
+
+// Function to generate a target file with usernames
+func generateUsernameTargetFile() string {
+	fmt.Println(Cyan + "\n-> Username Generator Options" + Reset)
+	
+	var count int
+	fmt.Print(Cyan + "Enter the number of usernames to generate: " + Reset)
+	_, err := fmt.Scanln(&count)
+	if err != nil || count <= 0 {
+		count = 100 // Default to 100 if invalid input
+		fmt.Println(Yellow + "Using default count of 100 usernames." + Reset)
+	}
+	
+	var minLength, maxLength int
+	fmt.Print(Cyan + "Enter minimum username length (3-15): " + Reset)
+	_, err = fmt.Scanln(&minLength)
+	if err != nil || minLength < 3 || minLength > 15 {
+		minLength = 3 // Default to 3 if invalid input
+		fmt.Println(Yellow + "Using default minimum length of 3." + Reset)
+	}
+	
+	fmt.Print(Cyan + "Enter maximum username length (must be >= minimum and <= 15): " + Reset)
+	_, err = fmt.Scanln(&maxLength)
+	if err != nil || maxLength < minLength || maxLength > 15 {
+		maxLength = 8 // Default to 8 if invalid input
+		fmt.Println(Yellow + "Using default maximum length of 8." + Reset)
+	}
+	
+	// Generate usernames
+	fmt.Println(Cyan + "Generating " + strconv.Itoa(count) + " usernames..." + Reset)
+	usernames := generateSnapchatUsernames(count, minLength, maxLength)
+	
+	// Create a temporary file to store the usernames
+	tempFileName := "generated_usernames_" + hex.EncodeToString([]byte(time.Now().String()))[0:8] + ".txt"
+	err = saveGeneratedUsernames(usernames, tempFileName)
+	if err != nil {
+		fmt.Println(Red + "Error saving usernames: " + Reset + err.Error())
+		return ""
+	}
+	
+	fmt.Println(Green + "Generated and saved " + strconv.Itoa(count) + " usernames to " + tempFileName + Reset)
+	return tempFileName
+}
+
 func main() {
 	showSplash()
 
@@ -603,7 +838,8 @@ func main() {
 +-----------------------+
 |` + Blue + ` 1. Start New Session` + Cyan + `  |
 |` + Blue + ` 2. Resume Session` + Cyan + `     |
-|` + Blue + ` 3. Exit` + Cyan + `               |
+|` + Blue + ` 3. Generate Usernames` + Cyan + ` |
+|` + Blue + ` 4. Exit` + Cyan + `               |
 +-----------------------+` + Reset)
 	fmt.Print(Cyan + "\n-> Choose an option" + Reset + ": ")
 
@@ -615,7 +851,6 @@ func main() {
 
 	switch choice {
 	case "1":
-
 		newSessionName := "SESSION_" + strconv.Itoa(len(sessions)+1)
 		sessionPath = getSessionPath(newSessionName)
 		targetsPath = filepath.Join(sessionPath, "targets.txt")
@@ -658,9 +893,52 @@ func main() {
 		sessionPath = getSessionPath(chosenSession)
 		targetsPath = filepath.Join(sessionPath, "targets.txt")
 		outputPath = filepath.Join(sessionPath, "output.txt")
-
-
+		
 	case "3":
+		// Generate usernames and then start a new session with them
+		generatedFile := generateUsernameTargetFile()
+		if generatedFile == "" {
+			fmt.Println(Red + "Failed to generate usernames. Please try again." + Reset)
+			pauseTerminal()
+			return
+		}
+		
+		fmt.Print(Cyan + "Do you want to check these generated usernames now? (y/n): " + Reset)
+		var checkNow string
+		fmt.Scanln(&checkNow)
+		
+		if strings.ToLower(checkNow) == "y" || strings.ToLower(checkNow) == "yes" {
+			newSessionName := "SESSION_" + strconv.Itoa(len(sessions)+1)
+			sessionPath = getSessionPath(newSessionName)
+			targetsPath = filepath.Join(sessionPath, "targets.txt")
+			outputPath = filepath.Join(sessionPath, "output.txt")
+			
+			// Create session directory
+			if err := os.MkdirAll(sessionPath, os.ModePerm); err != nil {
+				fmt.Println(Red+"Error creating session directory:"+Reset, err)
+				pauseTerminal()
+				return
+			}
+			
+			// Copy generated file to targets
+			input, err := os.ReadFile(generatedFile)
+			if err != nil {
+				fmt.Println(Red+"Error reading generated file:"+Reset, err)
+				pauseTerminal()
+				return
+			}
+			if err := os.WriteFile(targetsPath, input, 0644); err != nil {
+				fmt.Println(Red+"Error copying generated file to session:"+Reset, err)
+				pauseTerminal()
+				return
+			}
+		} else {
+			fmt.Println(Green + "Username file generated. You can use it in a new session later." + Reset)
+			pauseTerminal()
+			return
+		}
+
+	case "4":
 		fmt.Println(Red + "Exiting program. Hope you found some good users!" + Reset)
 		os.Exit(0)
 	default:
