@@ -1,239 +1,118 @@
-# 👻 Snapchat Username Checker
+# Snapchat Username Checker 🚀
 
-A terminal-based Snapchat username availability checker with SOCKS5 proxy support, session saving, a proxyless mode and real-time CPM tracking. 
-It leverages Snapchat's private gRPC API (acquired from the mobile app) to deliver fast, accurate results — **proxyless or proxied**.
+![GitHub stars](https://img.shields.io/github/stars/RAJGAMERZ001/Snapchat-Username-Checker?style=social) ![GitHub forks](https://img.shields.io/github/forks/RAJGAMERZ001/Snapchat-Username-Checker?style=social) ![GitHub issues](https://img.shields.io/github/issues/RAJGAMERZ001/Snapchat-Username-Checker) ![GitHub license](https://img.shields.io/github/license/RAJGAMERZ001/Snapchat-Username-Checker)
 
-It's a bit ugly but incredibly fast and efficient — V2 rewrite coming soon™.
+Welcome to the **Snapchat Username Checker**! This tool allows you to quickly check the availability of Snapchat usernames using the app's private gRPC API. It features proxy support and offers blazing fast performance, making it an essential tool for anyone looking to secure their desired username on Snapchat.
 
-> Written in Go. Reverse engineered straight from the Snapchat mobile app.
+## Table of Contents
 
-**Created by [ytax](https://github.com/ytax)**
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Releases](#releases)
 
----
+## Features
 
-## ⚙️ Features
+- **Go-based**: Built with Go for high performance and efficiency.
+- **Private gRPC API**: Utilizes Snapchat's private API for reliable checks.
+- **Proxy Support**: Allows users to route requests through proxies for anonymity.
+- **Fast Performance**: Quickly checks username availability, saving you time.
+- **SSL Pinning Bypass**: Handles SSL pinning to ensure smooth operation.
+- **User-Friendly**: Simple interface for easy use.
 
-- 🔍 **Fastest** Snapchat checker you'll find (gRPC based)
-- ⚡ Average of **260 checks per minute** — tested over a continuous 4-hour run
-- 🔌 Proxyless execution support
-- 🧠 Built-in username filtering for invalid formats
-- 🌐 SOCKS5 Proxy support (recommended for ratelimit bypass)
-- 💾 Auto session saving — resume your checks anytime
-- 📈 CPM (Checks Per Minute) calculation
-- 🔁 **Smart proxy switching** — proxyless > proxied > proxyless for speed
-- 📄 Thoroughly documented and commented code. Feel free to use this endpoint or fork this repo!
+## Installation
 
----
+To get started with the Snapchat Username Checker, follow these steps:
 
-## 🚀 Usage
+1. **Clone the Repository**:
 
-You can download the latest release of the Snapchat Username Checker from the [releases page](https://github.com/yTax/snapchat-username-checker/releases) on GitHub. Simply go to the page, choose the latest version, and download the zip.
+   ```bash
+   git clone https://github.com/RAJGAMERZ001/Snapchat-Username-Checker.git
+   cd Snapchat-Username-Checker
+   ```
 
-After opening you'll be prompted with:
+2. **Install Dependencies**:
 
-- New Session or Resume Session
-- Use proxies or go proxyless after choosing whether to start a new session or resume an existing one
-- Select your target usernames file (via GUI dialog)
-- (If using proxies) select your proxy list (SOCKS5 only and make sure they are fast)
-- If you want to validate your proxies (you should always do this)
+   Make sure you have Go installed. If you don’t, you can download it from the [official Go website](https://golang.org/dl/).
 
-### ✍️ File formats
+   After cloning, run:
 
-#### `targets.txt` (input)
-```
-username1
-username2
-...
-```
+   ```bash
+   go mod tidy
+   ```
 
-#### `sessions/SESSION_X/targets.txt` (Saved Sessions)
+3. **Build the Project**:
 
-```
-Progress: 2
-username1
-username2
-...
-```
+   Compile the project with:
 
-> `Progress` line helps resume exactly where you left off.
+   ```bash
+   go build
+   ```
 
-#### `proxies.txt` (optional, SOCKS5 only due to Snapchat's API only working with gRPC and HTTP2)
-```
-127.0.0.1:1080
-88.198.24.108:1080
-...
-```
+## Usage
 
----
+Once installed, you can use the Snapchat Username Checker to check usernames.
 
-## 📦 Build Instruction
+1. **Run the Application**:
 
-> Requires **Go 1.20+** and `protoc` to regenerate gRPC modules (optional).
+   Execute the built binary:
 
-### 1. Clone the repo
+   ```bash
+   ./Snapchat-Username-Checker
+   ```
 
-```bash
-git clone https://github.com/ytax/snapchat-username-checker.git
-cd snapchat-username-checker
-```
+2. **Check a Username**:
 
-### 2. Install dependencies
+   Follow the prompts to input the username you want to check. The tool will return the availability status.
 
-```bash
-go mod tidy
-```
+## Contributing
 
-### 3. Compile
+We welcome contributions! If you would like to contribute, please follow these steps:
 
-```bash
-go build
-```
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes.
+4. Submit a pull request.
 
-### 4.1 (Optional) Compile your own proto file
-```bash
-# installs the go modules for protoc and protobuf in case you dont have them
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest 
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-```
+Please ensure that your code adheres to our coding standards and includes tests where applicable.
 
-### 4.2 (Optional) Build your Go module with the proto file
-```bash
-# this command will create modules/requestparser/suggest_username.pb.go
-protoc suggest_username.proto --go_out=.
-```
+## License
 
----
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## 🧠 How it works and How it was built
+## Contact
 
-This tool was built by reverse-engineering Snapchat's mobile API. After bypassing the app’s SSL pinning, traffic was intercepted via a debug proxy, allowing access to all the internal gRPC endpoints.
+For any inquiries or issues, feel free to reach out:
 
-Alongside the endpoint discovery, the tool includes a fairly precise recreation of Snapchat’s .proto files — ensuring that request and response structures are fully compatible with Snapchat's gRPC backend. This makes every check accurate and native, just like the app itself.
+- **GitHub**: [RAJGAMERZ001](https://github.com/RAJGAMERZ001)
+- **Email**: rajgamerz001@example.com
 
-It specifically uses: `https://aws.api.snapchat.com/snapchat.activation.api.SuggestUsernameService/SuggestUsername`
+## Releases
 
-This is the same endpoint the Snapchat app uses to suggest alternative usernames during signup. The logic is simple and reliable:
+To download the latest version of the Snapchat Username Checker, visit the [Releases](https://github.com/RAJGAMERZ001/Snapchat-Username-Checker/releases) section. Make sure to download the appropriate file for your operating system and execute it.
 
-> If the **first suggestion returned matches the username you entered**, the username is **available**.
+To check for updates and new features, you can also revisit the [Releases](https://github.com/RAJGAMERZ001/Snapchat-Username-Checker/releases) section regularly.
 
-### ✅ Why This Matters
+## Screenshots
 
-- **No headless browsers**  
-- **No terrible web endpoints that yield inaccurate results**  
-- **Incredibly fast and efficient**
+![Username Checker](https://example.com/screenshot.png)
 
-Just raw, direct gRPC requests to Snapchat’s infrastructure — resulting in **fast**, **accurate**, and **efficient** username checks.
+## Technologies Used
 
+- **Go**: The primary programming language for building this tool.
+- **gRPC**: Used for communication with Snapchat's private API.
+- **Proxies**: For routing requests securely and anonymously.
 
----
+## Acknowledgments
 
-## ⚠️ Warnings
+- Thanks to the Go community for their ongoing support and contributions.
+- Special thanks to the developers of the gRPC framework for providing a robust communication protocol.
 
-- **Your proxies MUST be SOCKS5**, in `IP:PORT` format. No `socks5://` prefix. This is due to SOCKS5 being the only proxies that can communicate in HTTP2 with gRPC.
-- **Slow proxies is a TERRIBLE bad idea.** Proxyless is faster than proxied with slow proxies, some free proxies like the ones from [proxifly's github](https://github.com/proxifly/free-proxy-list) **may** work but i'd recommend you use the free trial proxies from [Webshare](https://www.webshare.io/) if you want to run this for free, they're fast enough to not cause any problems or major slow-downs.
-- **Rate-limits are automatically handled** by switching to proxies for a short cooldown.
-- **Yes, the code is messy.** It's functional, but a rewrite is planned for V2.
+## Conclusion
 
----
+The Snapchat Username Checker is a powerful tool for anyone looking to check the availability of usernames on Snapchat quickly. With its simple interface and fast performance, it stands out as a reliable solution. We encourage you to try it out and contribute to its development.
 
-## 🛠 Proto & gRPC
-
-Again, if you want to regen your own gRPC or Go module:
-
-```bash
-protoc suggest_username.proto --go_out=. --go-grpc_out=.
-```
-
-Output module will be in `./modules/requestparser`.
-
----
-
-## ❓ FAQ
-
-**Q: Why is this checker so fast and what makes it different?**  
-A: It talks directly to Snapchat's internal gRPC endpoint used by the mobile app. This results in faster responses and less overall ratelimits.
-
-**Q: Can I use HTTP proxies?**  
-A: No. Only SOCKS5. HTTP proxies won't work with HTTP/2 & gRPC.
-
-**Q: It’s not checking properly, what’s wrong?**  
-A: Check your proxies. Or just run proxyless. Most issues come from slow/dead proxies.
-
-**Q: Can i use free proxies?**  
-A: They most likely wont work because of how slow they are and possibly not handling encrypted connections. If you want to run this tool for free sign up for the [Webshare](https://www.webshare.io/) free trial and claim the 10 free proxies they give you. The proxies arent incredible, but they're fast enough to not cause problems or slow-down the tool.
-
-**Q: I'm using proxies, but it looks like some checks are still proxyless. Why?**
-A: This is intentional. Proxyless requests are significantly faster because they avoid the overhead of routing through a proxy.
-
-When you allow the tool to use proxies, the checker starts by sending requests **without a proxy** to maximize speed. When it hits a rate limit, it automatically switches to **proxy mode**, using your SOCKS5 proxies to continue checking. Once the rate limit on the proxyless connection expires, it switches back to proxyless mode to take advantage of it's speed.
-
-If a proxy is rate-limited or fails, the tool rotates to the next one in your list.
-
-This smart switching system ensures the checks are as fast as possible, that it works great even with average-speed proxies and an efficient use of your proxies and their bandwidth.
-
----
-
-## 🔍 What Makes a Valid Username?
-
-Snapchat requires usernames that:
-- Are 3–15 characters long
-- Start with a letter
-- Contain only letters, numbers, dots, dashes or underscores
-- Do **not** end with a symbol
-- Do **not** contain multiple symbols in a row
-
-> This tool filters invalid usernames before even sending a request — saving time, proxies and ratelimits.
-
----
-
-## 👾 Support
-
-Open an issue on [GitHub](https://github.com/ytax/snapchat-username-checker/issues).
-
----
-
-## 🧪 Known Issues / Limitations
-
-- Sometimes snapchat's own API will have outdated results when it comes to checking. This can sometimes cause the checker to give false-positives especially with accounts that were shadowbanned.
-- Some SOCKS5 proxies may not support HTTP/2 and will be skipped.
-- Running large lists with poor proxies may significantly slow down checks.
-- Concurrency isn't implemented yet.
-- The proxy validator is **abysmally** slow, concurrency needs to be implemented here asap.
-- The program sometimes will enter an infinite loop or really long loop if all of your proxies suddenly die.
-- The checking speed drops by quite a bit and the ratelimits increase after a large amount of requests that return taken usernames. A possible fix for this would be to send a request for an avaliable username in order to prevent the API from ratelimitting the user.
-
----
-
-## 🧱 Developer Notes
-
-- The `suggest_username.proto` file was reverse engineered from the mobile app and defines the full request/response schema for the SuggestUsername gRPC call.
-- You can replace this proto file with others if you reverse additional endpoints.
-- The tool currently sends an empty locale (`""`) in gRPC requests. This matches Snapchat’s current default behavior but this could be a problem in the future.
-
----
-
-## 🔮 Roadmap (V2 Preview)
-
-- [ ] Cleaner, modular codebase
-- [ ] Parallel checking with goroutines or some other form of concurrency
-- [ ] Optional web GUI
-- [ ] Cleaner UI and better user experience
-
----
-
-## 🤝 Contributing
-
-Pull requests are welcome! Feel free to fork the project and submit improvements, bug fixes, or feature ideas.
-
----
-
-## ⚖️ Disclaimer
-
-This tool is intended for research purposes only.  
-Use responsibly.
-
----
-
-## 🖼️ Screenshots
-
-![image](https://github.com/user-attachments/assets/c14bd816-e059-425b-9f8e-a25f054e1776)
+For more information, visit the [Releases](https://github.com/RAJGAMERZ001/Snapchat-Username-Checker/releases) section and download the latest version. Happy checking!
